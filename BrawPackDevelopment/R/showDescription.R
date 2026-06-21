@@ -1,0 +1,518 @@
+
+plotPoints<-function(g,IV,DV,analysis,colindex=1,maxoff=1){
+
+  if (braw.env$allScatter && !braw.env$newSampleDisplay) showRawData<-TRUE
+  else showRawData<-FALSE
+  
+  alphaPoints<-1
+  shrinkDots=0.5
+  if (colindex==1)
+          {  col<- braw.env$plotColours$descriptionC
+          xoff=0
+          off=0
+          barwidth=1
+          } else { 
+          col <-braw.env$plotDescriptionCols[[colindex-1]]
+          off<-(colindex-2)/(maxoff-1)-0.5
+          xoff=0.1
+          barwidth=0.5
+          }
+  off<-off*braw.env$CatPlotOffset
+
+  x<-analysis$ivplot
+  y<-analysis$dvplot
+  
+  hypothesisType=paste(IV$type,DV$type,sep=" ")
+
+  dotSize<-braw.env$dotSize
+  # if (length(x)>100)   dotSize<-max(dotSize*sqrt(100/length(x)),2)
+  
+  # dotSize<-dotSize/2
+  col<-darken(col,off=0.2)
+  switch (hypothesisType,
+          "Interval Interval"={
+            pts<-data.frame(x=x,y=y)
+            if (showRawData) {
+              g<-addG(g,dataPoint(data=pts,shape=braw.env$plotShapes$data, colour="#000000", fill=col, alpha=alphaPoints, size =dotSize*shrinkDots))
+            }
+          },
+          
+          "Ordinal Interval"={
+            pts<-data.frame(x=x,y=y)
+            if (showRawData) {
+              g<-addG(g,dataPoint(data=pts,shape=braw.env$plotShapes$data, colour="#000000", fill=col, alpha=alphaPoints, size =dotSize*shrinkDots))
+            }
+          },
+          
+          "Categorical Interval"={
+            pp<-CatProportions(IV)
+            # if (colindex>1)
+            # x<-(analysis$ivplot-as.numeric(analysis$iv))/2+as.numeric(analysis$iv)
+            pts<-data.frame(x=x+off/4,y=y)
+            if (showRawData) {
+                g<-addG(g,dataPoint(data=pts,shape=braw.env$plotShapes$data, colour = "#000000", fill=col, alpha=alphaPoints, size =dotSize*shrinkDots))
+            }
+          },
+          
+          "Ordinal Ordinal"={
+            pts<-data.frame(x=x,y=y)
+            if (showRawData) {
+              g<-addG(g,dataPoint(data=pts,shape=braw.env$plotShapes$data, colour="#000000", fill=col, alpha=alphaPoints, size =dotSize*shrinkDots))
+            }
+          },
+          
+          "Interval Ordinal"={
+            pts<-data.frame(x=x,y=y)
+            if (showRawData) {
+              if (colindex>=2) {
+              pts<-data.frame(x=x,y=y,fill=names(braw.env$plotDescriptionCols)[colindex-1])
+              g<-addG(g,dataPoint(data=pts,shape=braw.env$plotShapes$data, colour = "#000000", alpha=alphaPoints, size =dotSize))
+            } else
+              g<-addG(g,dataPoint(data=pts,shape=braw.env$plotShapes$data, colour="#000000", fill=col, alpha=alphaPoints, size =dotSize*shrinkDots))
+            }
+          },
+          
+          "Categorical Ordinal"={
+            pts<-data.frame(x=x,y=y);
+            if (showRawData) {
+                g<-addG(g,dataPoint(data=pts,shape=braw.env$plotShapes$data, colour = "#000000", fill=col, alpha=alphaPoints, size =dotSize*shrinkDots))
+            }
+          },
+          
+          "Interval Categorical"={
+            np<-max(7,length(analysis$iv)/6)
+            bin_breaks<-seq(min(analysis$iv)-0.00001,max(analysis$iv)+0.00001,length.out=np)
+            # bin_breaks<-c(-Inf,seq(-1,1,length.out=np)*braw.env$fullRange*sd(analysis$iv)+mean(analysis$iv),Inf)
+            dens2<-hist(analysis$iv,breaks=bin_breaks,freq=TRUE,plot=FALSE,warn.unused = FALSE)
+            bins=dens2$mids
+            dx<-diff(bins[1:2])/2
+            full_x<-c()
+            full_y<-c()
+            full_f<-c()
+            full_c<-c()
+            if (braw.env$onesided) i2use<-2:1
+            else i2use=1:2
+            for (i2 in i2use){
+              xv<-c()
+              yv<-c()
+              dens1<-hist(analysis$iv[analysis$dv==DV$cases[i2]],breaks=bin_breaks,freq=TRUE,plot=FALSE,warn.unused = FALSE)
+              densities<-dens1$counts/dens2$counts
+              for (i in 1:(length(dens1$counts)-1)){
+                y<-dens1$counts[i]
+                if (y>0){
+                  xv<-c(xv,rep(dens1$mids[i],y)+runif(y,min=-dx,max=dx))
+                  ynew<-seq(0,densities[i],length.out=y+1)
+                  yv<-c(yv,ynew[1:y])
+                }
+              }
+              if (i2==1) yv<-(1-yv)
+              full_x<-c(full_x,xv)
+              full_y<-c(full_y,yv)
+              full_f<-c(full_f,rep(i2,length(xv)))
+              col<-braw.env$plotColours$descriptionC
+              if (i2==1) col<-darken(col,0.25,off=0.75)
+              full_c<-c(full_c,rep(col,length(xv)))
+            }
+            pts<-data.frame(x=full_x+xoff,y=full_y)
+            if (showRawData) {
+              if (colindex>=2) {
+                g<-addG(g,dataPoint(data=pts,shape=braw.env$plotShapes$data, size =dotSize, alpha=alphaPoints, colour="#000000", fill=full_c))
+              } else {
+                g<-addG(g,dataPoint(data=pts,shape=braw.env$plotShapes$data, size =dotSize*shrinkDots, alpha=alphaPoints, colour="#000000",fill=full_c))
+              }
+            }
+          },
+          
+          
+          "Ordinal Categorical"={
+            bin_breaks<-c(-Inf,seq(-1,1,length.out=braw.env$varNPoints-1)*braw.env$fullRange*sd(analysis$iv)+mean(analysis$iv),Inf)
+            dens2<-hist(analysis$iv,breaks=bin_breaks,freq=TRUE,plot=FALSE,warn.unused = FALSE)
+            bins=dens2$mids
+            full_x<-c()
+            full_y<-c()
+            full_f<-c()
+            full_c<-c()
+            if (braw.env$onesided) i2<-1
+            else i2=1
+            for (i2 in i2:DV$ncats){
+              xv<-c()
+              yv<-c()
+              dens1<-hist(analysis$iv[analysis$dv==DV$cases[i2]],breaks=bin_breaks,freq=TRUE,plot=FALSE,warn.unused = FALSE)
+              densities<-dens1$counts/dens2$counts
+              for (i in 1:(length(dens1$counts)-1)){
+                y<-dens1$counts[i]
+                if (y>0){
+                  xv<-c(xv,rep(bins[i],y)+runif(y,min=-0.08,max=0.08))
+                  ynew<-seq(0,densities[i],length.out=y+1)
+                  yv<-c(yv,ynew[1:y])
+                }
+              }
+              if (i2==1) yv<-(1-yv)
+              full_x<-c(full_x,xv)
+              full_y<-c(full_y,yv)
+              full_f<-c(full_f,rep(i2,length(xv)))
+              if (colindex==1) {
+                col<-braw.env$plotColours$descriptionC
+                if (i2==1) col<-darken(col,0.25,off=0.75)
+                full_c<-c(full_c,rep(col,length(xv)))
+              }
+            }
+            pts<-data.frame(x=full_x,y=full_y)
+            if (showRawData) {
+              if (colindex>=2) {
+                g<-addG(g,dataPoint(data=pts,shape=braw.env$plotShapes$data, size =dotSize, alpha=alphaPoints, colour="#000000",fill="white"))
+              } else {
+                g<-addG(g,dataPoint(data=pts,shape=braw.env$plotShapes$data, size =dotSize*shrinkDots, alpha=alphaPoints, colour="#000000",fill=full_c))
+              }
+            }
+          },
+          
+          "Categorical Categorical"={
+            b<-(1:IV$ncats)
+            xv<-as.numeric(analysis$iv)
+            yv<-as.numeric(analysis$dv)
+            
+            pp<-matrix(NA,DV$ncats,IV$ncats)
+            for (i1 in 1:IV$ncats) {
+              for (i2 in 1:DV$ncats) {
+                pp[i2,i1]<-sum(yv[xv==i1]==i2)
+              }
+            }
+            pp<-pp/matrix(colSums(pp),nrow(pp),ncol(pp),byrow=TRUE)
+            
+            stacked<-braw.env$barStacked
+            if (colindex==1) barwidth<-0.5
+            else barwidth<-0.25
+            for (i2 in DV$ncats:1) {
+              xoffset<-((i2-1)/(DV$ncats-1)-0.5)
+              if (stacked) xoffset<-0
+              yoffset<-0
+              y<-c()
+              x<-c()
+              for (i1 in 1:IV$ncats) {
+                yoffset<-0
+                if (stacked && i2>1) yoffset<-sum(pp[1:(i2-1),i1])
+                np1<-sum(yv[xv==i1]==i2)
+                ynew<-seq(0,pp[i2,i1],length.out=np1+2)
+                y<-c(y,yoffset+ynew[2:(np1+1)])
+                x<-c(x,rep(i1,np1)+xoffset*barwidth/2+runif(np1,min=-0.1,max=0.1)/5)
+              }
+              # y<-pp[i2,xv[yv==i2]]*runif(length(xv[yv==i2]),min=0.05,max=0.9)
+              # y<-y-min(y)
+              if (colindex>1) {
+                # x<-x/2.5
+                xoff<-(colindex-2.5)*0.5
+                } else xoff<-0
+              pts<-data.frame(x=x+xoff,y=y)
+              if (showRawData) {
+                if (colindex>=2) {
+                  if (i2==1) col<-darken(col,0.25,off=0.75)
+                  g<-addG(g,dataPoint(data=pts,shape=braw.env$plotShapes$data, size =dotSize, alpha=alphaPoints, colour="#000000", fill=col))
+                } else {
+                  col<-braw.env$plotColours$descriptionC
+                  if (i2==1) col<-darken(col,0.25,off=0.75)
+                  g<-addG(g,dataPoint(data=pts,shape=braw.env$plotShapes$data, size =dotSize*shrinkDots, colour="#000000", fill=col, alpha=alphaPoints))
+                }
+              }
+            }
+          }
+  )
+ g  
+}
+
+plotCatInterDescription<-function(analysis,showFit=TRUE,g=NULL){
+  hypothesis<-analysis$hypothesis
+  
+  braw.env$plotDescriptionCols <- c()
+  cols<-c()
+  for (i in 1:analysis$hypothesis$IV2$ncats){
+    off<-(i-1)/(analysis$hypothesis$IV2$ncats-1)
+    col<- col2rgb(braw.env$plotColours$descriptionC1)*(1-off)+col2rgb(braw.env$plotColours$descriptionC2)*off
+    cols<- c(cols,rgb(col[1]/255,col[2]/255,col[3]/255))
+  }
+  names<-hypothesis$IV2$cases
+  braw.env$plotDescriptionCols <- cols
+  
+  Ivals<-analysis$iv
+  Dvals<-analysis$dv
+  rho<-analysis$rIV+seq(-1,1,length.out=hypothesis$IV2$ncats)*analysis$rIVIV2DV
+  
+  for (j in 1:2)
+  for (i in 1:hypothesis$IV2$ncats){
+    use<-analysis$iv2==hypothesis$IV2$cases[i]
+    
+    analysis1<-analysis
+    analysis1$iv<-analysis$iv[use]
+    analysis1$dv<-analysis$dv[use]
+    analysis1$ivplot<-analysis$ivplot[use]
+    analysis1$dvplot<-analysis$dvplot[use]
+    # analysis1$participant<-analysis1$participant[use]
+    # analysis1$iv2<-NULL
+    # analysis1$hypothesis$IV2<-NULL
+    # analysis1<-doAnalysis(analysis1)
+    analysis1$rIV<-rho[i]
+    
+    if (analysis1$hypothesis$IV$type=="Interval") {
+      analysis1$hypothesis$IV$mu<-mean(analysis1$iv,na.rm=TRUE)
+      analysis1$hypothesis$IV$sd<-sd(analysis1$iv,na.rm=TRUE)
+    }
+    if (analysis1$hypothesis$DV$type=="Interval") {
+      analysis1$hypothesis$DV$mu<-mean(analysis1$dv,na.rm=TRUE)
+      analysis1$hypothesis$DV$sd<-sd(analysis1$dv,na.rm=TRUE)
+    }
+    analysis1$hypothesis$IV$vals<-Ivals[use]
+    analysis1$hypothesis$DV$vals<-Dvals[use] 
+    
+    if (analysis1$hypothesis$DV$type=="Categorical") {
+      switch(j,
+             if (showFit)  g<-plotPrediction(analysis1$hypothesis$IV,NULL,analysis1$hypothesis$DV,analysis1,analysis$design,2+(i-1)/(hypothesis$IV2$ncats-1),evidence=analysis1$evidence,g=g),
+      g<-plotPoints(g,analysis1$hypothesis$IV,analysis1$hypothesis$DV,analysis1,i+1,hypothesis$IV2$ncats)
+      )
+    } else {
+      switch(j,
+             if (showFit)  g<-plotPoints(g,analysis1$hypothesis$IV,analysis1$hypothesis$DV,analysis1,i+1,hypothesis$IV2$ncats),
+      g<-plotPrediction(analysis1$hypothesis$IV,NULL,analysis1$hypothesis$DV,analysis1,analysis$design,2+(i-1)/(hypothesis$IV2$ncats-1),evidence=analysis1$evidence,g=g)
+      )
+    }
+  }
+  g<-addG(g,dataLegend(data.frame(names=names,colours=cols),title=analysis$hypothesis$IV2$name))
+  
+  g
+}
+
+plotParInterDescription<-function(analysis,showFit=TRUE,g=NULL){
+  col<-c( braw.env$plotColours$descriptionC1, braw.env$plotColours$descriptionC2)
+  names<-c(paste(analysis$hypothesis$IV2$name," < median",sep=""), paste(analysis$hypothesis$IV2$name," > median",sep=""))
+  # col<-as.list(col)
+  braw.env$plotDescriptionCols <- col
+
+  Ivals<-analysis$iv
+  Dvals<-analysis$dv
+  rho<-analysis$rIV+seq(-1,1,length.out=2)*analysis$rIVIV2DV
+  
+  # long-winded but ensures that means are above the raw data
+            use1<-analysis$iv2<median(analysis$iv2)
+        analysis1<-analysis
+        analysis1$participant<-analysis$participant[use1]
+        analysis1$iv<-analysis$iv[use1]
+        analysis1$iv2<-NULL
+        analysis1$dv<-analysis$dv[use1]
+        analysis1$ivplot<-analysis$ivplot[use1]
+        analysis1$iv2plot<-NULL
+        analysis1$dvplot<-analysis$dvplot[use1]
+        # analysis1$rIV<-rho[1]
+        
+        analysis1$hypothesis$IV$vals<-Ivals[use1]
+        analysis1$hypothesis$DV$vals<-Dvals[use1]
+        analysis1$hypothesis$DV$mu<-mean(as.numeric(analysis$dv[use1]),na.rm=TRUE)
+        analysis1$hypothesis$IV2<-NULL
+        analysis1<-doAnalysis(analysis1)
+
+            use2<-analysis$iv2>=median(analysis$iv2)
+        analysis2<-analysis
+        analysis2$participant<-analysis$participant[use2]
+        analysis2$iv<-analysis$iv[use2]
+        analysis2$iv2<-NULL
+        analysis2$dv<-analysis$dv[use2]
+        analysis2$ivplot<-analysis$ivplot[use2]
+        analysis2$iv2plot<-NULL
+        analysis2$dvplot<-analysis$dvplot[use2]
+        # analysis2$rIV<-rho[2]
+        
+        analysis2$hypothesis$IV$vals<-Ivals[use2]
+        analysis2$hypothesis$IV2<-NULL
+        analysis2$hypothesis$DV$vals<-Dvals[use2]
+        analysis2$hypothesis$DV$mu<-mean(as.numeric(analysis$dv[use2]),na.rm=TRUE)
+        analysis2<-doAnalysis(analysis2)
+        
+        range1<-c(min(analysis1$ivplot),max(analysis1$ivplot))
+        range2<-c(min(analysis2$ivplot),max(analysis2$ivplot))
+        g<-plotPoints(g,analysis1$hypothesis$IV,analysis1$hypothesis$DV,analysis1,2,2)
+        g<-plotPoints(g,analysis2$hypothesis$IV,analysis2$hypothesis$DV,analysis2,3,2)
+        if (showFit) {
+        g<-plotPrediction(analysis1$hypothesis$IV,NULL,analysis1$hypothesis$DV,analysis1,analysis$design,offset=2,range=range1,evidence=analysis1$evidence,g=g)
+        g<-plotPrediction(analysis2$hypothesis$IV,NULL,analysis2$hypothesis$DV,analysis2,analysis$design,offset=3,range=range2,evidence=analysis2$evidence,g=g)
+        }
+        # if (analysis1$hypothesis$DV$type=="Categorical") {
+        # } else {
+        #   g<-plotPoints(g,analysis1$hypothesis$IV,analysis1$hypothesis$DV,analysis1,2,2)
+        #   g<-plotPoints(g,analysis2$hypothesis$IV,analysis2$hypothesis$DV,analysis2,3,2)
+        #   g<-plotPrediction(analysis1$hypothesis$IV,NULL,analysis1$hypothesis$DV,analysis1,analysis$design,offset=2,range=range1,g=g)
+        #   g<-plotPrediction(analysis2$hypothesis$IV,NULL,analysis2$hypothesis$DV,analysis2,analysis$design,offset=3,range=range2,g=g)
+        # }
+   g<-addG(g,dataLegend(data.frame(names=names,colours=col),title=analysis$hypothesis$IV2$name))     
+  g
+}
+
+plotParDescription<-function(analysis,dataOnly=FALSE,g) {
+  
+  g<-plotPoints(g,analysis$hypothesis$IV,analysis$hypothesis$DV,analysis,1)
+  if (!dataOnly)
+  g<-plotPrediction(analysis$hypothesis$IV,analysis$hypothesis$IV2,analysis$hypothesis$DV,analysis,analysis$design,evidence=analysis$evidence,offset=1,g=g)
+  g
+}
+
+plotCatDescription<-function(analysis,dataOnly=FALSE,g) {
+
+  analysis$hypothesis$IV$vals<-analysis$iv
+  analysis$hypothesis$DV$vals<-analysis$dv
+  
+  if (analysis$hypothesis$IV$type=="Ordinal") {
+    h<-c()
+    for (i in 1:analysis$hypothesis$IV$nlevs)
+      h<-c(h,sum(analysis$iv==i))
+    analysis$hypothesis$IV$ordProportions<-paste(h,sep=",")
+  }
+  
+  if (!dataOnly) 
+    g<-plotPrediction(analysis$hypothesis$IV,analysis$hypothesis$IV2,analysis$hypothesis$DV,analysis,analysis$design,offset=1,evidence=analysis$evidence,g=g)
+  g<-plotPoints(g,analysis$hypothesis$IV,analysis$hypothesis$DV,analysis,1)
+  
+  g
+}
+
+#' show the sample effect-size analysis of a simulated sample
+#' 
+#' @return ggplot2 object - and printed
+#' @examples
+#' showDescription(analysis=doAnalysis())
+#' @export
+showDescription<-function(analysis=braw.res$result,whichEffect="direct",
+                          plotArea=c(0,0,1,1),dataOnly=FALSE,g=NULL) {
+  
+  if(is.null(analysis)) analysis<-doAnalysis(autoShow=FALSE)
+  
+  braw.env$plotArea<-plotArea
+  
+  old_newSampleDisplay<-braw.env$newSampleDisplay
+  if (!is.null(analysis$hypothesis$IV2)) setBrawEnv("newSampleDisplay",FALSE)
+  if (analysis$hypothesis$DV$type=="Categorical") setBrawEnv("newSampleDisplay",FALSE)
+  
+  analysis$hypothesis$IV$vals<-analysis$iv
+  analysis$hypothesis$DV$vals<-analysis$dv
+  if (braw.env$newSampleDisplay && braw.env$allScatter) {
+    g<-NULL
+    if (analysis$design$Replication$On && !is.null(analysis$ResultHistory$original)) 
+      g<-showSample(analysis$ResultHistory$original,marginals=FALSE,fill=desat(braw.env$plotColours$sampleC,0.5),dotSize=0.5)
+    g<-showSample(analysis,marginals=FALSE,g=g)
+  } else {
+    if (is.null(g)) {
+      g<-getAxisPrediction(analysis$hypothesis) 
+    }
+  }
+  if (is.null(analysis$hypothesis$IV2)||(!analysis$evidence$AnalysisTerms[2])||(whichEffect=="Main1")){
+    analysis$hypothesis$IV2<-NULL
+    switch (analysis$hypothesis$DV$type,
+            "Interval"=g<-plotParDescription(analysis,dataOnly=dataOnly,g=g),
+            "Ordinal"=g<-plotParDescription(analysis,dataOnly=dataOnly,g=g),
+            "Categorical"=g<-plotCatDescription(analysis,dataOnly=dataOnly,g=g)
+    )
+    names<-c(paste0("n=",analysis$nval), paste0("r[s]=",round(analysis$rIV,3)))
+    colours<-c(braw.env$plotColours$sampleC,
+               braw.env$plotColours$descriptionC)
+    title<-""
+    titleCol<-"black"
+    if (analysis$design$Replication$On) {
+      if (length(analysis$ResultHistory$rIV)<2) title<-"No Replication"
+      else {
+        if (analysis$pIV>braw.env$alphaSig) {
+          title<-"Replication Failed"
+          titleCol<-darken(braw.env$plotColours$infer_nsigC,off=-0.5)
+        } else {
+          title<-"Replication Success"
+          titleCol<-darken(braw.env$plotColours$infer_sigC,off=-0.5)
+        }
+      }
+    } 
+    # g<-addG(g,dataLegend(data.frame(names=names,colours=colours),
+    #                      title=title,titleCol=titleCol,shape=c(21,22),location="left"))
+  } else {
+    oldResult<-braw.res$result
+    g<-nullPlot()
+    if (analysis$evidence$AnalysisTerms[3] || whichEffect=="Main1+2") {
+      if (analysis$evidence$rInteractionOnly)
+        braw.env$plotArea<-c(0,0,1,1)*plotArea[c(3,4,3,4)]+c(plotArea[c(1,2)],0,0)
+      else
+        braw.env$plotArea<-c(0.25,0.5,0.45,0.5)*plotArea[c(3,4,3,4)]+c(plotArea[c(1,2)],0,0)
+      g<-getAxisPrediction(analysis$hypothesis,g=g) 
+      
+      if (whichEffect=="Main1+2") {
+        # the basic layer
+      oldIV2<-analysis$hypothesis$IV2
+      analysis$hypothesis$IV2<-NULL
+      switch (analysis$hypothesis$DV$type,
+              "Interval"=g<-plotParDescription(analysis,dataOnly=dataOnly,g=g),
+              "Ordinal"=g<-plotParDescription(analysis,dataOnly=dataOnly,g=g),
+              "Categorical"=g<-plotCatDescription(analysis,dataOnly=dataOnly,g=g)
+      )
+      analysis$hypothesis$IV2<-oldIV2
+      }
+      
+      switch (analysis$hypothesis$IV2$type,
+              "Interval"=g<-plotParInterDescription(analysis,showFit=(analysis$evidence$AnalysisTerms[3]),g=g),
+              "Ordinal"=g<-plotParInterDescription(analysis,showFit=(analysis$evidence$AnalysisTerms[3]),g=g),
+              "Categorical"=g<-plotCatInterDescription(analysis,showFit=(analysis$evidence$AnalysisTerms[3]),g=g)
+      )
+      yoff<-0
+    } else {
+      if (analysis$evidence$AnalysisTerms[4]) yoff<-0.0
+      else                                    yoff<-0.25
+    
+    if (all(analysis$evidence$AnalysisTerms[1:3]==c(TRUE,TRUE,FALSE)) || !analysis$evidence$rInteractionOnly) {
+      analysis1<-analysis
+      analysis1$hypothesis$IV2<-NULL
+      analysis2<-analysis
+      analysis2$hypothesis$IV<-analysis2$hypothesis$IV2
+      analysis2$iv<-analysis2$iv2
+      analysis2$ivplot<-analysis2$iv2plot
+      analysis2$rIV<-analysis2$rIV2
+      
+      analysis2$hypothesis$IV2<-NULL
+      
+      braw.env$plotArea<-c(0,yoff,0.45,0.5)*plotArea[c(3,4,3,4)]+c(plotArea[c(1,2)],0,0)
+      g<-getAxisPrediction(analysis1$hypothesis,g=g)
+      switch (analysis1$hypothesis$DV$type,
+              "Interval"=g<-plotParDescription(analysis1,dataOnly=dataOnly,g=g),
+              "Ordinal"=g<-plotParDescription(analysis1,dataOnly=dataOnly,g=g),
+              "Categorical"=g<-plotCatDescription(analysis1,dataOnly=dataOnly,g=g)
+      )
+      braw.env$plotArea<-c(0.55,yoff,0.45,0.5)*plotArea[c(3,4,3,4)] +c(plotArea[c(1,2)],0,0)
+      g<-getAxisPrediction(analysis2$hypothesis,g=g) 
+      switch (analysis2$hypothesis$DV$type,
+              "Interval"=g<-plotParDescription(analysis2,dataOnly=dataOnly,g=g),
+              "Ordinal"=g<-plotParDescription(analysis2,dataOnly=dataOnly,g=g),
+              "Categorical"=g<-plotCatDescription(analysis2,dataOnly=dataOnly,g=g)
+      )
+      if (analysis$evidence$AnalysisTerms[4]) {
+        analysis3<-analysis
+        analysis3$hypothesis$IV2<-NULL
+        analysis3$hypothesis$DV<-analysis$hypothesis$IV2
+        analysis3$dv<-analysis$iv2
+        analysis3$dvplot<-analysis$iv2plot
+        analysis3$rIV<-analysis2$rIVIV2
+        braw.env$plotArea<-c(0.55/2,0.5,0.45,0.5)*plotArea[c(3,4,3,4)]+c(plotArea[c(1,2)],0,0)
+        g<-getAxisPrediction(analysis3$hypothesis,g=g)
+        switch (analysis3$hypothesis$DV$type,
+                "Interval"=g<-plotParDescription(analysis3,dataOnly=dataOnly,g=g),
+                "Ordinal"=g<-plotParDescription(analysis3,dataOnly=dataOnly,g=g),
+                "Categorical"=g<-plotCatDescription(analysis3,dataOnly=dataOnly,g=g)
+        )
+        
+      }
+    }
+    }
+    setBrawRes("result",oldResult)
+  }
+  
+  setBrawEnv("newSampleDisplay",old_newSampleDisplay)
+
+  if (braw.env$graphicsType=="HTML" && braw.env$autoShow) {
+    showHTML(g)
+    return(invisible(g))
+  }
+  if (braw.env$graphicsType=="ggplot" && braw.env$autoPrint) {
+    print(g)
+    return(invisible(g))
+  }
+  return(g)  
+}
