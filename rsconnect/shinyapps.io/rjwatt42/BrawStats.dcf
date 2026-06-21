@@ -1,0 +1,13 @@
+name: BrawStats
+title: BrawStats
+username:
+account: rjwatt42
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3973138
+bundleId: 8207503
+url: https://rjwatt42.shinyapps.io/BrawStats/
+when: 1706807770.42764
+lastSyncTime: 1706807770.42765
+asMultiple: FALSE
+asStatic: FALSE
